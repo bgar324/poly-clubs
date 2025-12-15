@@ -1,26 +1,179 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* This line failed because the package wasn't installed. It should work now. */
+@plugin "tailwindcss-animate";
 
-@theme inline {
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* 1. LINK NEXT.JS FONTS */
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+
+  /* 2. DEFINE CAL POLY COLORS DIRECTLY */
+  --color-poly-green: #154734;
+  --color-poly-gold: #c69214;
+  --color-poly-cream: #f4f1ea;
+  --color-poly-clay: #ead9c2;
+
+  /* 3. MAP SHADCN VARIABLES TO TAILWIND UTILITIES */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Animations (Standard Shadcn) */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 4. DEFINE THE CSS VARIABLES (HSL VALUES) */
+/* These are the raw values that the @theme block above references */
+:root {
+  /* Cal Poly "Poly Green" -> #154734 -> HSL 157 55% 18% */
+  /* Cal Poly "Gold"       -> #C69214 -> HSL 42 82% 43% */
+  /* Cal Poly "Cream"      -> #F4F1EA -> HSL 42 30% 94% */
+
+  --background: 42 30% 94%; /* Cream background by default */
+  --foreground: 157 55% 18%; /* Green text by default */
+
+  --card: 0 0% 100%;
+  --card-foreground: 157 55% 18%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 157 55% 18%;
+
+  --primary: 157 55% 18%;
+  --primary-foreground: 42 30% 94%;
+
+  --secondary: 42 82% 43%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 34 38% 84%;
+  --muted-foreground: 157 55% 18%;
+
+  --accent: 34 38% 84%;
+  --accent-foreground: 157 55% 18%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 34 38% 84%;
+  --input: 34 38% 84%;
+  --ring: 157 55% 18%;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 157 55% 10%;
+  --foreground: 42 30% 94%;
+
+  --card: 157 55% 12%;
+  --card-foreground: 42 30% 94%;
+
+  --popover: 157 55% 12%;
+  --popover-foreground: 42 30% 94%;
+
+  --primary: 42 30% 94%;
+  --primary-foreground: 157 55% 18%;
+
+  --secondary: 42 82% 43%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 157 50% 15%;
+  --muted-foreground: 42 20% 80%;
+
+  --accent: 157 50% 15%;
+  --accent-foreground: 42 30% 94%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 157 50% 20%;
+  --input: 157 50% 20%;
+  --ring: 42 82% 43%;
+}
+
+/* 5. BASE STYLES */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
+
+@layer utilities {
+  .mask-x-fade {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
 }
