@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Star,
   Globe,
-  MapPin,
-  Users,
-  Calendar,
   ArrowLeft,
   MessageSquare,
 } from "lucide-react";
@@ -89,26 +86,7 @@ export async function generateMetadata({
   };
 }
 
-// Helper for relative time (e.g. "2 days ago")
-function timeAgo(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  return "Just now";
-}
-
-// 3. THE PAGE COMPONENT
+// THE PAGE COMPONENT
 export default async function ClubPage({
   params,
 }: {
