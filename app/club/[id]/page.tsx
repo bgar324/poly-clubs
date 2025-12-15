@@ -29,9 +29,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const club = getClubById(params.id);
+  const { id } = await params;
+  const club = getClubById(id);
 
   if (!club) {
     return {
@@ -66,7 +67,7 @@ export async function generateMetadata({
     openGraph: {
       title: clubTitle,
       description: clubDescription,
-      url: `https://poly-clubs.vercel.app/club/${params.id}`, // IMPORTANT: Use your actual deployed URL
+      url: `https://poly-clubs.vercel.app/club/${id}`, // IMPORTANT: Use your actual deployed URL
       images: [
         {
           url: imageUrl,
@@ -108,9 +109,9 @@ function timeAgo(dateString: string) {
 export default async function ClubPage({
   params,
 }: {
-  params: { id: string }; // params are now resolved outside the component
+  params: Promise<{ id: string }>; // params are now a Promise in Next.js 15
 }) {
-  const { id } = params;
+  const { id } = await params;
   const club = getClubById(id);
 
   if (!club) {
