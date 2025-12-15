@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import { ResponsiveReview } from "@/components/ResponsiveReview";
 import { ReviewItem } from "@/components/ReviewItem";
 import { supabase } from "@/lib/supabase";
+import type { Metadata } from "next"; // <-- Import Metadata type
 
 // 1. GENERATE STATIC PARAMS
 export async function generateStaticParams() {
@@ -22,6 +23,66 @@ export async function generateStaticParams() {
   return clubs.map((club) => ({
     id: String(club.Id),
   }));
+}
+
+// 2. DYNAMIC METADATA GENERATOR (The core SEO enhancement)
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const club = getClubById(params.id);
+
+  if (!club) {
+    return {
+      title: "Club Not Found | Poly Clubs",
+      description: "The requested club page does not exist.",
+    };
+  }
+
+  // --- Construct Dynamic Values ---
+  const clubTitle = `${club.Name} | Poly Clubs`;
+
+  // Fetch review count for the description
+  const { count } = await supabase
+    .from("reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("club_id", String(club.Id));
+
+  const reviewCount = count || 0;
+
+  const clubDescription =
+    reviewCount > 0
+      ? `Check ${reviewCount} anonymous student reviews and ratings for ${club.Name} (ID: ${club.Id}).`
+      : `Explore information and be the first to review ${club.Name}.`;
+
+  const imageUrl = club.ProfilePicture
+    ? `https://se-images.campuslabs.com/clink/images/${club.ProfilePicture}?preset=large-sq`
+    : "/icon"; // Fallback to Next.js generated icon
+
+  return {
+    title: clubTitle,
+    description: clubDescription,
+    openGraph: {
+      title: clubTitle,
+      description: clubDescription,
+      url: `https://poly-clubs.vercel.app/club/${params.id}`, // IMPORTANT: Use your actual deployed URL
+      images: [
+        {
+          url: imageUrl,
+          alt: `${club.Name} Profile Image`,
+        },
+      ],
+    },
+    // Optional: Add Twitter card data for optimal sharing
+    twitter: {
+      card: "summary",
+      site: "@PolyClubs",
+      title: clubTitle,
+      description: clubDescription,
+      images: [imageUrl],
+    },
+  };
 }
 
 // Helper for relative time (e.g. "2 days ago")
@@ -43,13 +104,13 @@ function timeAgo(dateString: string) {
   return "Just now";
 }
 
-// 2. THE PAGE COMPONENT
+// 3. THE PAGE COMPONENT
 export default async function ClubPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string }; // params are now resolved outside the component
 }) {
-  const { id } = await params;
+  const { id } = params;
   const club = getClubById(id);
 
   if (!club) {

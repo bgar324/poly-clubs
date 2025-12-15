@@ -6,5 +6,5 @@ export interface Club {
   Summary?: string;
   ProfilePicture?: string;
   CategoryNames?: string[];
-  WebsiteKey?: string; // <--- ADD THIS LINE to fix the red squiggle
+  WebsiteKey?: string;
 }
