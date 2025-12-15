@@ -39,6 +39,7 @@ export default function Home() {
     Record<string, { rating: number; count: number }>
   >({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [activeCategory, setActiveCategory] = useState("All");
 
@@ -60,28 +61,38 @@ export default function Home() {
     return ["All", ...sorted];
   }, [rawClubs]);
 
-  // 1. Fetch Real Stats
+  // 1. Fetch Real Stats (optimized with database aggregation)
   useEffect(() => {
-    async function fetchStats() {
-      const { data } = await supabase.from("reviews").select("club_id, rating");
-      if (data) {
-        const agg: Record<string, { sum: number; count: number }> = {};
-        data.forEach((r) => {
-          if (!agg[r.club_id]) agg[r.club_id] = { sum: 0, count: 0 };
-          agg[r.club_id].sum += Number(r.rating);
-          agg[r.club_id].count += 1;
-        });
-        const finalStats: Record<string, { rating: number; count: number }> =
-          {};
-        Object.keys(agg).forEach((id) => {
-          finalStats[id] = {
-            rating: agg[id].sum / agg[id].count,
-            count: agg[id].count,
-          };
-        });
-        setStats(finalStats);
+    async function fetchStats(retries = 3) {
+      try {
+        const { data, error } = await supabase.rpc("get_review_stats");
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          const finalStats: Record<string, { rating: number; count: number }> = {};
+          data.forEach((stat: { club_id: string; avg_rating: number; review_count: number }) => {
+            finalStats[stat.club_id] = {
+              rating: Number(stat.avg_rating),
+              count: Number(stat.review_count),
+            };
+          });
+          setStats(finalStats);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch review stats:", err);
+        if (retries > 0) {
+          // Retry after 1 second
+          setTimeout(() => fetchStats(retries - 1), 1000);
+          return;
+        }
+        setError("Unable to load review stats. Clubs are shown without ratings.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchStats();
   }, []);
@@ -263,7 +274,9 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 text-sm font-medium text-gray-400 whitespace-nowrap px-4 md:px-0">
-            {loading ? "Syncing..." : `${processedClubs.length} results`}
+            {loading ? "Syncing..." : error ? (
+              <span className="text-orange-500">{error}</span>
+            ) : `${processedClubs.length} results`}
           </div>
         </div>
 

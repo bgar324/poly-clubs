@@ -16,6 +16,10 @@ import { ResponsiveReview } from "@/components/ResponsiveReview";
 import { ReviewItem } from "@/components/ReviewItem";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next"; // <-- Import Metadata type
+import DOMPurify from "isomorphic-dompurify";
+
+// Use ISR with 30 second revalidation (balance between freshness and performance)
+export const revalidate = 30;
 
 // 1. GENERATE STATIC PARAMS
 export async function generateStaticParams() {
@@ -121,12 +125,18 @@ export default async function ClubPage({
   const clubIdStr = String(club.Id);
 
   // --- REAL DATA FETCHING ---
-  // Fetch ALL fields and order by newest
-  const { data: reviews } = await supabase
+  // Fetch ALL fields and order by newest, excluding flagged reviews
+  const { data: reviews, error: reviewError } = await supabase
     .from("reviews")
     .select("*")
     .eq("club_id", clubIdStr)
+    .eq("flagged", false)
     .order("created_at", { ascending: false });
+
+  // Log error but still render page (reviews will be empty)
+  if (reviewError) {
+    console.error("Failed to fetch reviews:", reviewError);
+  }
 
   // --- REAL MATH CALCULATION ---
   const reviewCount = reviews?.length || 0;
@@ -248,10 +258,11 @@ export default async function ClubPage({
             <div
               className="prose prose-lg prose-green text-gray-600 leading-relaxed max-w-none"
               dangerouslySetInnerHTML={{
-                __html:
+                __html: DOMPurify.sanitize(
                   club.Description ||
                   club.Summary ||
-                  "No description available.",
+                  "No description available."
+                ),
               }}
             />
           </section>

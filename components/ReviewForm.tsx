@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 export function ReviewForm({
   clubId,
@@ -30,6 +31,7 @@ export function ReviewForm({
   // State to track if the user has a valid review in the DB
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true); // New loading state
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
 
   // Form State
   const [social, setSocial] = useState(50);
@@ -38,9 +40,42 @@ export function ReviewForm({
   const [reviewText, setReviewText] = useState("");
   const [major, setMajor] = useState("");
 
-  // 1. SMART CHECK: Verify if the local receipt actually exists in the DB
+  // Character limits
+  const MAX_REVIEW_LENGTH = 500;
+  const MAX_MAJOR_LENGTH = 50;
+
+  // Generate browser fingerprint for rate limiting
+  useEffect(() => {
+    async function generateFingerprint() {
+      const fp = await FingerprintJS.load();
+      const result = await fp.get();
+      setFingerprint(result.visitorId);
+    }
+    generateFingerprint();
+  }, []);
+
+  // 1. SMART CHECK: Verify if the user has already submitted a review
   useEffect(() => {
     async function checkReviewStatus() {
+      // Wait for fingerprint to be generated
+      if (!fingerprint) {
+        return;
+      }
+
+      // Check backend rate limit table first
+      const { data: canSubmit } = await supabase.rpc("check_review_rate_limit", {
+        p_identifier: fingerprint,
+        p_club_id: clubId,
+      });
+
+      if (!canSubmit) {
+        // User has already reviewed this club from this device
+        setHasSubmitted(true);
+        setCheckingStatus(false);
+        return;
+      }
+
+      // Also check localStorage for legacy compatibility
       const localReviewId = localStorage.getItem(`reviewed_club_${clubId}`);
 
       if (!localReviewId) {
@@ -67,7 +102,7 @@ export function ReviewForm({
     }
 
     checkReviewStatus();
-  }, [clubId]);
+  }, [clubId, fingerprint]);
 
   const handleMouseMove = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -85,9 +120,38 @@ export function ReviewForm({
       return;
     }
 
+    // Validate text length
+    if (reviewText.length > MAX_REVIEW_LENGTH) {
+      toast.error(`Review must be ${MAX_REVIEW_LENGTH} characters or less`);
+      return;
+    }
+
+    if (major.length > MAX_MAJOR_LENGTH) {
+      toast.error(`Major must be ${MAX_MAJOR_LENGTH} characters or less`);
+      return;
+    }
+
+    if (!fingerprint) {
+      toast.error("Please wait while we verify your session...");
+      return;
+    }
+
     setLoading(true);
 
-    // IMPORTANT: Add .select() to get the ID back
+    // Check rate limit (backend validation)
+    const { data: canSubmit } = await supabase.rpc("check_review_rate_limit", {
+      p_identifier: fingerprint,
+      p_club_id: clubId,
+    });
+
+    if (!canSubmit) {
+      setLoading(false);
+      toast.error("You've already reviewed this club from this device.");
+      setHasSubmitted(true);
+      return;
+    }
+
+    // Submit review
     const { data, error } = await supabase
       .from("reviews")
       .insert({
@@ -102,22 +166,29 @@ export function ReviewForm({
       .select()
       .single();
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toast.error("Failed to post review. Please try again.");
       console.error(error);
-    } else if (data) {
-      // SUCCESS: Store the actual Review ID, not just "true"
-      localStorage.setItem(`reviewed_club_${clubId}`, data.id);
-
-      setHasSubmitted(true);
-      toast.success("Review posted successfully!");
-
-      setTimeout(() => {
-        onSuccess();
-      }, 1500);
+      return;
     }
+
+    // Record submission in rate limit table
+    await supabase.rpc("record_review_submission", {
+      p_identifier: fingerprint,
+      p_club_id: clubId,
+    });
+
+    // SUCCESS: Store the actual Review ID in localStorage
+    localStorage.setItem(`reviewed_club_${clubId}`, data.id);
+
+    setLoading(false);
+    setHasSubmitted(true);
+    toast.success("Review posted successfully!");
+
+    setTimeout(() => {
+      onSuccess();
+    }, 1500);
   }
 
   // Loading skeleton while we check DB status (prevents flash of content)
@@ -279,26 +350,44 @@ export function ReviewForm({
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
-              Major (Optional)
-            </label>
+            <div className="flex justify-between items-center">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
+                Major (Optional)
+              </label>
+              <span className={cn(
+                "text-[10px] font-medium",
+                major.length > MAX_MAJOR_LENGTH ? "text-red-500" : "text-gray-400"
+              )}>
+                {major.length}/{MAX_MAJOR_LENGTH}
+              </span>
+            </div>
             <Input
               placeholder="e.g. Business Administration"
               value={major}
-              onChange={(e) => setMajor(e.target.value)}
+              onChange={(e) => setMajor(e.target.value.slice(0, MAX_MAJOR_LENGTH))}
+              maxLength={MAX_MAJOR_LENGTH}
               className="bg-white border-gray-200 h-11 text-gray-800 placeholder:text-gray-300 focus:border-poly-green focus:ring-4 focus:ring-poly-green/10 transition-all rounded-lg"
             />
           </div>
 
           <div className="space-y-2 flex-grow flex flex-col">
-            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
-              Review
-            </label>
+            <div className="flex justify-between items-center">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">
+                Review
+              </label>
+              <span className={cn(
+                "text-[10px] font-medium",
+                reviewText.length > MAX_REVIEW_LENGTH ? "text-red-500" : "text-gray-400"
+              )}>
+                {reviewText.length}/{MAX_REVIEW_LENGTH}
+              </span>
+            </div>
             <Textarea
               placeholder="Be honest about the people, the time commitment, and the vibes..."
               className="flex-grow resize-none bg-white border-gray-200 p-4 text-base leading-relaxed h-full min-h-[150px] text-gray-800 placeholder:text-gray-300 focus:border-poly-green focus:ring-4 focus:ring-poly-green/10 transition-all rounded-lg"
               value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
+              onChange={(e) => setReviewText(e.target.value.slice(0, MAX_REVIEW_LENGTH))}
+              maxLength={MAX_REVIEW_LENGTH}
             />
           </div>
         </div>
