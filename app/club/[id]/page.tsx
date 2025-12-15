@@ -16,7 +16,6 @@ import { ResponsiveReview } from "@/components/ResponsiveReview";
 import { ReviewItem } from "@/components/ReviewItem";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next"; // <-- Import Metadata type
-import DOMPurify from "isomorphic-dompurify";
 
 // Force dynamic rendering to show reviews immediately
 export const dynamic = 'force-dynamic';
@@ -258,11 +257,10 @@ export default async function ClubPage({
             <div
               className="prose prose-lg prose-green text-gray-600 leading-relaxed max-w-none"
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(
+                __html:
                   club.Description ||
                   club.Summary ||
-                  "No description available."
-                ),
+                  "No description available.",
               }}
             />
           </section>
