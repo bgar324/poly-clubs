@@ -9,7 +9,7 @@ const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-serif" });
 
 export const metadata: Metadata = {
   title: "Poly Clubs",
-  description: "The unofficial pulse of campus life.",
+  description: "The independent directory for Cal Poly student organizations.",
 };
 
 export default function RootLayout({
