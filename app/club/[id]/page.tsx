@@ -18,8 +18,8 @@ import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next"; // <-- Import Metadata type
 import DOMPurify from "isomorphic-dompurify";
 
-// Use ISR with 30 second revalidation (balance between freshness and performance)
-export const revalidate = 30;
+// Force dynamic rendering to show reviews immediately
+export const dynamic = 'force-dynamic';
 
 // 1. GENERATE STATIC PARAMS
 export async function generateStaticParams() {
