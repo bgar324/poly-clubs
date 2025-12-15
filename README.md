@@ -485,7 +485,7 @@ Reviews are limited to one per device per club using localStorage. The system ve
 Flagged reviews are marked in the database with `is_flagged: true`. They remain visible to users but can be filtered/reviewed by moderators in the database.
 
 ### Is this affiliated with Cal Poly?
-No, this is an independent student project. It's not officially associated with California Polytechnic State University.
+No, this is an independent student project. It's not officially associated with California Polytechnic State University
 
 ---
 
